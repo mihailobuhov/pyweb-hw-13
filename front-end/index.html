@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.min.js" defer></script>
+  <script src="script.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('birthday-input').setAttribute('max', today);
+    });
+  </script>
+</head>
+
+<body>
+  <div class="container py-5" x-data="{
+    contacts: [],
+    newContact: { first_name: '', last_name: '', email: '', phone_number: '', birthday: '', additional_info: '' },
+    error: null,
+    async getContacts() {
+      try {
+        this.contacts = await window.getContacts();
+      } catch (err) {
+        this.error = err.message;
+      }
+    },
+    async createContact() {
+      try {
+        await window.createContact(this.newContact);
+        this.newContact = { first_name: '', last_name: '', email: '', phone_number: '', birthday: '', additional_info: '' };
+        this.error = null; // Reset error after successful creation
+        await this.getContacts();
+      } catch (err) {
+        this.error = err.message;
+      }
+    },
+    async editContact(contact) {
+      try {
+        await window.editContact(contact);
+        contact.editing = false;
+        this.error = null; // Reset error after successful edit
+        await this.getContacts();
+      } catch (err) {
+        this.error = err.message;
+      }
+    },
+    async deleteContact(id) {
+      try {
+        await window.deleteContact(id);
+        this.contacts = this.contacts.filter(contact => contact.id !== id);
+      } catch (err) {
+        this.error = err.message;
+      }
+    },
+    async fetchBirthdays() {
+      try {
+        const birthdays = await window.getUpcomingBirthdays();
+        this.displayBirthdays(birthdays);
+      } catch (err) {
+        this.error = err.message;
+      }
+    },
+    displayBirthdays(birthdays) {
+      const list = document.getElementById('birthdays-list');
+      list.innerHTML = ''; // Clear previous results
+      birthdays.forEach(contact => {
+        const listItem = document.createElement('li');
+        listItem.classList.add('list-group-item');
+        listItem.textContent = `${contact.first_name} ${contact.last_name} - ${contact.birthday}`;
+        list.appendChild(listItem);
+      });
+    },
+    init() { this.getContacts(); }
+  }" x-init="init()">
+    <div class="row">
+      <div class="col-md-6 offset-md-3">
+        <h1 class="mb-4 text-center">Contact App</h1>
+
+        <!-- Відображення повідомлення про помилку -->
+        <div x-show="error" class="alert alert-danger" x-text="error" @click="error = null"></div>
+
+        <div class="row mb-3">
+          <div class="input-group mb-3">
+            <input type="text" x-model="newContact.first_name" class="form-control" placeholder="First Name">
+          </div>
+          <div class="input-group mb-3">
+            <input type="text" x-model="newContact.last_name" class="form-control" placeholder="Last Name">
+          </div>
+          <div class="input-group mb-3">
+            <input type="email" x-model="newContact.email" class="form-control" placeholder="Email">
+          </div>
+          <div class="input-group mb-3">
+            <input type="text" x-model="newContact.phone_number" class="form-control" placeholder="Phone Number">
+          </div>
+          <div class="input-group mb-3">
+            <input type="date" id="birthday-input" x-model="newContact.birthday" class="form-control" placeholder="Birthday">
+          </div>
+          <div class="input-group mb-3">
+            <input type="text" x-model="newContact.additional_info" class="form-control" placeholder="Additional Info">
+          </div>
+
+          <button @click="createContact" class="btn btn-primary">Add contact</button>
+        </div>
+
+        <h2 class="my-4">Upcoming Birthdays</h2>
+        <button class="btn btn-info mb-4" @click="fetchBirthdays()">Get Upcoming Birthdays</button>
+        <ul id="birthdays-list" class="list-group mb-4"></ul>
+
+        <ul class="list-group">
+          <template x-for="contact in contacts" :key="contact.id">
+            <li class="list-group-item">
+              <div x-show="!contact.editing">
+                <div><strong>First Name:</strong> <span @dblclick="contact.editing = true" x-text="contact.first_name"></span></div>
+                <div><strong>Last Name:</strong> <span @dblclick="contact.editing = true" x-text="contact.last_name"></span></div>
+                <div><strong>Email:</strong> <span @dblclick="contact.editing = true" x-text="contact.email"></span></div>
+                <div><strong>Phone Number:</strong> <span @dblclick="contact.editing = true" x-text="contact.phone_number"></span></div>
+                <div><strong>Birthday:</strong> <span @dblclick="contact.editing = true" x-text="contact.birthday"></span></div>
+                <div><strong>Additional Info:</strong> <span @dblclick="contact.editing = true" x-text="contact.additional_info"></span></div>
+                <button @click="deleteContact(contact.id)" class="btn btn-sm btn-danger">Delete</button>
+                <button @click="contact.editing = true" class="btn btn-sm btn-warning">Edit</button>
+              </div>
+              <div x-show="contact.editing">
+                <input type="text" class="form-control" x-model="contact.first_name">
+                <input type="text" class="form-control" x-model="contact.last_name">
+                <input type="email" class="form-control" x-model="contact.email">
+                <input type="text" class="form-control" x-model="contact.phone_number">
+                <input type="date" class="form-control" x-model="contact.birthday" id="birthday-input-edit">
+                <script>
+                  document.getElementById('birthday-input-edit').setAttribute('max', new Date().toISOString().split('T')[0]);
+                </script>
+                <input type="text" class="form-control" x-model="contact.additional_info">
+
+                <button @click="editContact(contact)" class="btn btn-sm btn-success">Save</button>
+                <button @click="contact.editing = false" class="btn btn-sm btn-secondary">Cancel</button>
+              </div>
+            </li>
+          </template>
+        </ul>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
